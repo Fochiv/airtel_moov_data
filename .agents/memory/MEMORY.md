@@ -1,0 +1,1 @@
+- [Mobile-first customer experience](gooddeal-data-product.md) — Most Gooddeal Data customers use mobile; keep the customer flow simple and never identify the payment aggregator in customer-facing screens.

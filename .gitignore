@@ -1,0 +1,6 @@
+/storage/*.sqlite
+/storage/*.sqlite-*
+/config.local.php
+/error_log
+/logs/
+
