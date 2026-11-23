@@ -74,7 +74,7 @@ require dirname(__DIR__) . '/includes/header.php';
                     <div><dt><?= h(lang() === 'fr' ? 'Pays / devise' : 'Country / currency') ?></dt><dd>Gabon · XAF</dd></div>
                     <div><dt><?= h(lang() === 'fr' ? 'Moyens disponibles' : 'Available methods') ?></dt><dd>
                         <?php if (!$paymentMethods): ?><?= h(lang() === 'fr' ? 'Aucun moyen confirmé' : 'No confirmed methods') ?>
-                        <?php else: ?><?= h(implode(', ', array_map(static fn(string $method): string => $method === 'orange_money' ? 'Orange Money' : 'MTN Mobile Money', array_keys($paymentMethods)))) ?><?php endif; ?>
+                        <?php else: ?><?= h(implode(', ', array_map(static fn(string $method): string => gabon_payment_method_label($method) ?? $method, array_keys($paymentMethods)))) ?><?php endif; ?>
                     </dd></div>
                     <div><dt>Webhook</dt><dd><code><?= h((string) app_config('PUBLIC_WEBHOOK_URL', 'https://gooddeal-ga.top/webhook.php')) ?></code></dd></div>
                     <div><dt><?= h(lang() === 'fr' ? 'Assistance client' : 'Customer support') ?></dt><dd><a href="mailto:support@gooddeal.com">support@gooddeal.com</a></dd></div>

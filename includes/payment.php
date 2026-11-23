@@ -7,6 +7,18 @@ function bizconnectpay_configured(): bool
         && app_config('BIZCONNECTPAY_CLIENT_SECRET') !== null;
 }
 
+function gabon_payment_method_label(string $method): ?string
+{
+    $normalized = strtolower(trim($method));
+    if (str_contains($normalized, 'airtel')) {
+        return 'Airtel Money';
+    }
+    if (str_contains($normalized, 'moov')) {
+        return 'Moov Money';
+    }
+    return null;
+}
+
 function bcp_request(string $method, string $path, ?array $payload = null, ?string $idempotencyKey = null, ?string $token = null): array
 {
     $base = 'https://api.bizconnectpay.com/api/v1';
@@ -85,7 +97,7 @@ function bcp_services(): array
     }
     $pdo = db();
     $statement = $pdo->prepare('SELECT cache_value, expires_at FROM app_cache WHERE cache_key = ?');
-    $statement->execute(['bcp_services_ga']);
+    $statement->execute(['bcp_services_ga_v2']);
     $cached = $statement->fetch();
     if (is_array($cached) && (int) $cached['expires_at'] > time()) {
         $services = json_decode((string) $cached['cache_value'], true);
@@ -103,15 +115,16 @@ function bcp_services(): array
             && ($service['method_type'] ?? '') === 'MOBILE_MONEY'
             && ($service['available'] ?? false) === true) {
             $method = (string) ($service['payment_method'] ?? '');
-            if (in_array($method, ['mtn_momo', 'orange_money'], true)) {
-                $services[$method] = true;
+            $label = gabon_payment_method_label($method);
+            if ($label !== null) {
+                $services[$method] = $label;
             }
         }
     }
     $statement = $pdo->prepare('DELETE FROM app_cache WHERE cache_key = ?');
-    $statement->execute(['bcp_services_ga']);
+    $statement->execute(['bcp_services_ga_v2']);
     $statement = $pdo->prepare('INSERT INTO app_cache (cache_key, cache_value, expires_at) VALUES (?, ?, ?)');
-    $statement->execute(['bcp_services_ga', json_encode($services, JSON_THROW_ON_ERROR), time() + 300]);
+    $statement->execute(['bcp_services_ga_v2', json_encode($services, JSON_THROW_ON_ERROR), time() + 300]);
     return $services;
 }
 
@@ -144,7 +157,7 @@ function create_mobile_money_order(int $packageId, string $customerPhone, string
     if (!is_array($package)) {
         throw new InvalidArgumentException('Ce forfait n’est plus disponible.');
     }
-    if (!in_array($method, ['orange_money', 'mtn_momo'], true)) {
+    if (gabon_payment_method_label($method) === null) {
         throw new InvalidArgumentException('Choisissez un moyen de paiement.');
     }
     $normalizedCustomer = normalize_gabon_phone($customerPhone);

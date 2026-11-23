@@ -65,7 +65,7 @@ require dirname(__DIR__) . '/includes/header.php';
                             <td class="reference-cell"><?= h($order['client_reference']) ?><small class="cell-subtitle"><?= h($order['paid_at'] ?? $order['created_at']) ?></small></td>
                             <td><?= h($order['customer_phone']) ?><small class="cell-subtitle"><?= h(lang() === 'fr' ? 'Payeur :' : 'Payer:') ?> <?= h($order['payment_phone']) ?></small></td>
                             <td><span class="operator-pill <?= h(operator_color($order['operator'])) ?>"><?= h(operator_label($order['operator'])) ?></span><small class="cell-subtitle"><?= h($order['package_name']) ?></small></td>
-                            <td><?= h($order['payment_method'] === 'orange_money' ? 'Orange Money' : 'MTN Mobile Money') ?></td>
+                            <td><?= h(gabon_payment_method_label((string) $order['payment_method']) ?? (string) $order['payment_method']) ?></td>
                             <td><strong><?= h(format_price($order['amount'])) ?></strong></td>
                             <td><span class="status-pill <?= h($order['status']) ?>"><?= h($order['status'] === 'delivered' ? (lang() === 'fr' ? 'Livrée' : 'Delivered') : (lang() === 'fr' ? 'Payée' : 'Paid')) ?></span></td>
                             <td>

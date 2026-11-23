@@ -23,12 +23,14 @@ if (in_array($existingStatus, ['paid', 'delivered', 'failed'], true)) {
 $_SESSION['checkout_token'] = $checkoutToken;
 try {
     $availableMethods = bcp_services();
+    $serviceCatalogLoaded = bizconnectpay_configured();
 } catch (Throwable) {
     $availableMethods = [];
+    $serviceCatalogLoaded = false;
 }
-$paymentOptions = bizconnectpay_configured()
+$paymentOptions = $serviceCatalogLoaded
     ? $availableMethods
-    : ['orange_money' => true, 'mtn_momo' => true];
+    : ['airtel_money' => 'Airtel Money', 'moov_money' => 'Moov Money'];
 require __DIR__ . '/includes/header.php';
 ?>
 <header class="topbar">
@@ -168,8 +170,10 @@ require __DIR__ . '/includes/header.php';
                 <label class="form-label mt-3" for="paymentMethod"><?= h(t('payment_method')) ?></label>
                 <select class="form-select" id="paymentMethod" name="payment_method" required>
                     <option value=""><?= h(t('select_method')) ?></option>
-                    <?php if (isset($paymentOptions['orange_money'])): ?><option value="orange_money">Orange Money</option><?php endif; ?>
-                    <?php if (isset($paymentOptions['mtn_momo'])): ?><option value="mtn_momo">MTN Mobile Money</option><?php endif; ?>
+                    <?php foreach ($paymentOptions as $method => $label): ?>
+                        <option value="<?= h($method) ?>"><?= h((string) $label) ?></option>
+                    <?php endforeach; ?>
+                    <?php if (!$paymentOptions): ?><option value="" disabled><?= h(t('payment_unavailable')) ?></option><?php endif; ?>
                 </select>
                 <label class="form-label mt-3" for="payerPhone"><?= h(t('payment_phone')) ?></label>
                 <input class="form-control" type="tel" id="payerPhone" name="payment_phone" inputmode="tel" autocomplete="tel" placeholder="06 12 34 56" required>
