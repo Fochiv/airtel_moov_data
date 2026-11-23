@@ -61,25 +61,43 @@ $statusOptions = [
     'delivered' => lang() === 'fr' ? 'Livrée' : 'Delivered',
     'failed' => lang() === 'fr' ? 'Échouée' : 'Failed',
 ];
+$statusCounts = array_fill_keys(array_keys($statusOptions), 0);
+$countRows = $pdo->query('SELECT status, COUNT(*) AS total FROM orders GROUP BY status')->fetchAll();
+foreach ($countRows as $countRow) {
+    if (array_key_exists((string) $countRow['status'], $statusCounts)) {
+        $statusCounts[(string) $countRow['status']] = (int) $countRow['total'];
+    }
+}
+$allOrdersCount = (int) $pdo->query('SELECT COUNT(*) FROM orders')->fetchColumn();
 $requestedStatus = (string) ($_GET['status'] ?? '');
 $allowedStatus = array_key_exists($requestedStatus, $statusOptions) ? $requestedStatus : '';
 $search = trim((string) ($_GET['q'] ?? ''));
-$sql = 'SELECT id, client_reference, `operator`, package_name, amount, customer_phone, payment_phone, payment_method, status, created_at, paid_at, delivered_at, payment_intent_id FROM orders WHERE 1 = 1';
+$whereSql = ' WHERE 1 = 1';
 $params = [];
 if ($allowedStatus !== '') {
-    $sql .= ' AND status = ?';
+    $whereSql .= ' AND status = ?';
     $params[] = $allowedStatus;
 }
 if ($allowedOperator !== '') {
-    $sql .= ' AND `operator` = ?';
+    $whereSql .= ' AND `operator` = ?';
     $params[] = $allowedOperator;
 }
 if ($search !== '') {
-    $sql .= ' AND (client_reference LIKE ? OR customer_phone LIKE ? OR package_name LIKE ?)';
+    $whereSql .= ' AND (client_reference LIKE ? OR customer_phone LIKE ? OR package_name LIKE ?)';
     $needle = '%' . $search . '%';
     array_push($params, $needle, $needle, $needle);
 }
-$sql .= ' ORDER BY created_at DESC, id DESC LIMIT 250';
+$countFiltered = $pdo->prepare('SELECT COUNT(*) FROM orders' . $whereSql);
+$countFiltered->execute($params);
+$filteredOrdersCount = (int) $countFiltered->fetchColumn();
+$pageSize = 50;
+$pageCount = max(1, (int) ceil($filteredOrdersCount / $pageSize));
+$pageInput = $_GET['page'] ?? 1;
+$requestedPage = is_scalar($pageInput) ? filter_var($pageInput, FILTER_VALIDATE_INT) : false;
+$currentPage = max(1, min($pageCount, is_int($requestedPage) ? $requestedPage : 1));
+$offset = ($currentPage - 1) * $pageSize;
+$sql = 'SELECT id, client_reference, `operator`, package_name, amount, customer_phone, payment_phone, payment_method, status, created_at, paid_at, delivered_at, payment_intent_id FROM orders'
+    . $whereSql . ' ORDER BY created_at DESC, id DESC LIMIT ' . $pageSize . ' OFFSET ' . $offset;
 $statement = $pdo->prepare($sql);
 $statement->execute($params);
 $orders = $statement->fetchAll();
@@ -98,19 +116,37 @@ require dirname(__DIR__) . '/includes/header.php';
         </header>
         <div class="admin-content">
             <?php if ($flashMessage): ?><div class="admin-alert <?= h($flashMessage['type']) ?>" role="status"><?= h($flashMessage['message']) ?></div><?php endif; ?>
-            <section class="admin-panel orders-panel">
-                <div class="panel-heading"><div><span class="panel-kicker"><?= count($orders) ?> <?= h(lang() === 'fr' ? 'commandes affichées' : 'orders shown') ?></span><h2><?= h(lang() === 'fr' ? 'Historique des commandes' : 'Order history') ?></h2></div></div>
+            <section class="admin-panel orders-panel" data-admin-orders-refresh="30000">
+                <div class="panel-heading"><div><span class="panel-kicker"><?= count($orders) ?> / <?= $filteredOrdersCount ?> <?= h(lang() === 'fr' ? 'commandes affichées' : 'orders shown') ?></span><h2><?= h(lang() === 'fr' ? 'Historique des commandes' : 'Order history') ?></h2></div></div>
+                <?php
+                $statusFilters = ['' => [lang() === 'fr' ? 'Toutes' : 'All', $allOrdersCount]];
+                foreach ($statusOptions as $value => $label) {
+                    $statusFilters[$value] = [$label, $statusCounts[$value]];
+                }
+                ?>
+                <nav class="order-status-filters" aria-label="<?= h(lang() === 'fr' ? 'Filtrer les commandes par statut' : 'Filter orders by status') ?>">
+                    <?php foreach ($statusFilters as $value => [$label, $count]): ?>
+                        <?php
+                        $filterQuery = [];
+                        if ($value !== '') $filterQuery['status'] = $value;
+                        if ($allowedOperator !== '') $filterQuery['operator'] = $allowedOperator;
+                        if ($search !== '') $filterQuery['q'] = $search;
+                        $filterUrl = 'commandes.php' . ($filterQuery ? '?' . http_build_query($filterQuery) : '');
+                        ?>
+                        <a class="order-status-filter <?= $allowedStatus === $value ? 'active' : '' ?> <?= h($value) ?>" href="<?= h($filterUrl) ?>" <?= $allowedStatus === $value ? 'aria-current="page"' : '' ?>>
+                            <span><?= h($label) ?></span><strong><?= (int) $count ?></strong>
+                        </a>
+                    <?php endforeach; ?>
+                </nav>
                 <form class="order-search" method="get" action="commandes.php">
                     <label class="search-field"><?= icon('search') ?><input name="q" type="search" value="<?= h($search) ?>" placeholder="<?= h(lang() === 'fr' ? 'Référence, numéro ou forfait' : 'Reference, number or plan') ?>"></label>
-                    <select class="form-select" name="status" aria-label="<?= h(lang() === 'fr' ? 'Statut' : 'Status') ?>">
-                        <option value=""><?= h(lang() === 'fr' ? 'Tous les statuts' : 'All statuses') ?></option>
-                        <?php foreach ($statusOptions as $value => $label): ?>
-                            <option value="<?= h($value) ?>" <?= $allowedStatus === $value ? 'selected' : '' ?>><?= h($label) ?></option>
-                        <?php endforeach; ?>
-                    </select>
+                    <?php if ($allowedStatus !== ''): ?><input type="hidden" name="status" value="<?= h($allowedStatus) ?>"><?php endif; ?>
                     <select class="form-select" name="operator" aria-label="<?= h(lang() === 'fr' ? 'Opérateur' : 'Network') ?>"><option value=""><?= h(lang() === 'fr' ? 'Tous les opérateurs' : 'All networks') ?></option><option value="airtel" <?= $allowedOperator === 'airtel' ? 'selected' : '' ?>>Airtel</option><option value="moov" <?= $allowedOperator === 'moov' ? 'selected' : '' ?>>Moov</option></select>
                     <button class="button-primary" type="submit"><?= icon('filter') ?> <?= h(lang() === 'fr' ? 'Filtrer' : 'Filter') ?></button>
                 </form>
+                <p class="order-live-note"><span class="order-live-dot" aria-hidden="true"></span><?= h(lang() === 'fr'
+                    ? 'Cette liste s’actualise toutes les 30 secondes. Les notifications confirment automatiquement les paiements; utilisez « Vérifier » pour relire un statut en attente.'
+                    : 'This list refreshes every 30 seconds. Webhooks automatically confirm payments; use “Check” to re-read a pending status.') ?></p>
                 <?php if (!$orders): ?><p class="admin-empty"><?= h(lang() === 'fr' ? 'Aucune commande ne correspond à votre recherche.' : 'No orders match your search.') ?></p><?php else: ?>
                     <div class="table-wrap"><table class="admin-table"><thead><tr><th><?= h(lang() === 'fr' ? 'Référence' : 'Reference') ?></th><th><?= h(lang() === 'fr' ? 'Client' : 'Customer') ?></th><th><?= h(lang() === 'fr' ? 'Forfait' : 'Plan') ?></th><th><?= h(lang() === 'fr' ? 'Paiement' : 'Payment') ?></th><th><?= h(lang() === 'fr' ? 'Montant' : 'Amount') ?></th><th><?= h(lang() === 'fr' ? 'Statut' : 'Status') ?></th><th><?= h(lang() === 'fr' ? 'Action' : 'Action') ?></th></tr></thead><tbody>
                     <?php foreach ($orders as $order): ?>
@@ -149,6 +185,23 @@ require dirname(__DIR__) . '/includes/header.php';
                         </tr>
                     <?php endforeach; ?>
                     </tbody></table></div>
+                <?php endif; ?>
+                <?php if ($pageCount > 1): ?>
+                    <?php
+                    $pageQuery = [];
+                    if ($allowedStatus !== '') $pageQuery['status'] = $allowedStatus;
+                    if ($allowedOperator !== '') $pageQuery['operator'] = $allowedOperator;
+                    if ($search !== '') $pageQuery['q'] = $search;
+                    $previousQuery = $pageQuery;
+                    $previousQuery['page'] = max(1, $currentPage - 1);
+                    $nextQuery = $pageQuery;
+                    $nextQuery['page'] = min($pageCount, $currentPage + 1);
+                    ?>
+                    <nav class="admin-pagination" aria-label="<?= h(lang() === 'fr' ? 'Pages de commandes' : 'Order pages') ?>">
+                        <a class="<?= $currentPage <= 1 ? 'disabled' : '' ?>" href="commandes.php?<?= h(http_build_query($previousQuery)) ?>" <?= $currentPage <= 1 ? 'aria-disabled="true" tabindex="-1"' : '' ?>><?= h(lang() === 'fr' ? 'Précédent' : 'Previous') ?></a>
+                        <span><?= h(lang() === 'fr' ? 'Page' : 'Page') ?> <?= $currentPage ?> / <?= $pageCount ?></span>
+                        <a class="<?= $currentPage >= $pageCount ? 'disabled' : '' ?>" href="commandes.php?<?= h(http_build_query($nextQuery)) ?>" <?= $currentPage >= $pageCount ? 'aria-disabled="true" tabindex="-1"' : '' ?>><?= h(lang() === 'fr' ? 'Suivant' : 'Next') ?></a>
+                    </nav>
                 <?php endif; ?>
             </section>
             <p class="admin-note"><?= h(lang() === 'fr'

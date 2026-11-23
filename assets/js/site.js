@@ -142,4 +142,21 @@
     document.querySelectorAll('[data-menu-toggle]').forEach((button) => {
         button.addEventListener('click', () => document.body.classList.toggle('admin-menu-open'));
     });
+    const adminOrders = document.querySelector('[data-admin-orders-refresh]');
+    if (adminOrders) {
+        const refreshDelay = Math.max(10000, Number(adminOrders.dataset.adminOrdersRefresh) || 30000);
+        const orderSearchForm = adminOrders.querySelector('.order-search');
+        let filtersEdited = false;
+        orderSearchForm?.addEventListener('input', () => { filtersEdited = true; });
+        orderSearchForm?.addEventListener('change', () => { filtersEdited = true; });
+        const refreshOrders = () => {
+            const activeElement = document.activeElement;
+            if (document.visibilityState === 'visible' && !filtersEdited && !activeElement?.closest('.order-search')) {
+                window.location.reload();
+                return;
+            }
+            window.setTimeout(refreshOrders, 5000);
+        };
+        window.setTimeout(refreshOrders, refreshDelay);
+    }
 })();
