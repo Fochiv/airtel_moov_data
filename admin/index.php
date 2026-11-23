@@ -21,7 +21,7 @@ $periods = $statement->fetch() ?: ['daily' => 0, 'weekly' => 0, 'monthly' => 0];
 $byOperator = $pdo->query("SELECT `operator`, COUNT(*) AS total, COALESCE(SUM(amount),0) AS revenue FROM orders WHERE status IN ('paid','delivered') GROUP BY `operator`")->fetchAll();
 $popular = $pdo->query("SELECT `operator`, package_name, COUNT(*) AS total FROM orders WHERE status IN ('paid','delivered') GROUP BY `operator`, package_name ORDER BY total DESC LIMIT 4")->fetchAll();
 $statusRows = $pdo->query("SELECT status, COUNT(*) AS total FROM orders GROUP BY status")->fetchAll();
-$recent = $pdo->query("SELECT client_reference, `operator`, package_name, amount, customer_phone, payment_method, status, created_at FROM orders WHERE status IN ('paid','delivered') ORDER BY paid_at DESC, id DESC LIMIT 8")->fetchAll();
+$recent = $pdo->query("SELECT client_reference, `operator`, package_name, amount, customer_phone, payment_method, status, created_at FROM orders ORDER BY created_at DESC, id DESC LIMIT 8")->fetchAll();
 $paidCount = max(1, $gross);
 $pageTitle = lang() === 'fr' ? 'Tableau de bord' : 'Dashboard';
 require dirname(__DIR__) . '/includes/header.php';
@@ -77,14 +77,30 @@ require dirname(__DIR__) . '/includes/header.php';
                             default => lang() === 'fr' ? 'En attente' : 'Pending',
                         }) ?></span><strong><?= (int) $row['total'] ?></strong></div><div class="status-track"><i style="width: <?= $share ?>%"></i></div></div>
                     <?php endforeach; ?>
-                    <a class="panel-link" href="commandes.php"><?= h(lang() === 'fr' ? 'Voir les commandes payées' : 'View paid orders') ?> <?= icon('arrow') ?></a>
+                    <a class="panel-link" href="commandes.php"><?= h(lang() === 'fr' ? 'Voir les commandes' : 'View orders') ?> <?= icon('arrow') ?></a>
                 </article>
             </section>
             <section class="admin-panel orders-panel">
                 <div class="panel-heading"><div><span class="panel-kicker"><?= h(lang() === 'fr' ? 'Dernière activité' : 'Latest activity') ?></span><h2><?= h(lang() === 'fr' ? 'Historique des commandes' : 'Order history') ?></h2></div><a class="panel-link" href="commandes.php"><?= h(lang() === 'fr' ? 'Tout voir' : 'View all') ?> <?= icon('arrow') ?></a></div>
                 <?php if (!$recent): ?><p class="admin-empty"><?= h(lang() === 'fr' ? 'Les commandes payées apparaîtront ici.' : 'Paid orders will appear here.') ?></p><?php else: ?>
                     <div class="table-wrap"><table class="admin-table"><thead><tr><th><?= h(lang() === 'fr' ? 'Référence' : 'Reference') ?></th><th><?= h(lang() === 'fr' ? 'Client' : 'Customer') ?></th><th><?= h(lang() === 'fr' ? 'Forfait' : 'Plan') ?></th><th><?= h(lang() === 'fr' ? 'Montant' : 'Amount') ?></th><th><?= h(lang() === 'fr' ? 'Statut' : 'Status') ?></th></tr></thead><tbody>
-                    <?php foreach ($recent as $row): ?><tr><td class="reference-cell"><?= h($row['client_reference']) ?></td><td><?= h($row['customer_phone']) ?></td><td><span class="operator-pill <?= h(operator_color($row['operator'])) ?>"><?= h(operator_label($row['operator'])) ?></span> <?= h($row['package_name']) ?></td><td><?= h(format_price($row['amount'])) ?></td><td><span class="status-pill <?= h($row['status']) ?>"><?= h($row['status'] === 'delivered' ? (lang() === 'fr' ? 'Livrée' : 'Delivered') : (lang() === 'fr' ? 'Payée' : 'Paid')) ?></span></td></tr><?php endforeach; ?>
+                    <?php foreach ($recent as $row): ?>
+                        <?php
+                        $recentStatus = (string) $row['status'];
+                        $recentStatusLabel = match ($recentStatus) {
+                            'pending_payment' => lang() === 'fr' ? 'En attente' : 'Pending',
+                            'payment_unknown' => lang() === 'fr' ? 'En vérification' : 'Being checked',
+                            'paid' => lang() === 'fr' ? 'Paiement confirmé' : 'Payment confirmed',
+                            'delivered' => lang() === 'fr' ? 'Livrée' : 'Delivered',
+                            'failed' => lang() === 'fr' ? 'Échouée' : 'Failed',
+                            default => lang() === 'fr' ? 'Statut inconnu' : 'Unknown status',
+                        };
+                        $recentStatusClass = in_array($recentStatus, ['pending_payment', 'payment_unknown', 'paid', 'delivered', 'failed'], true)
+                            ? $recentStatus
+                            : 'payment_unknown';
+                        ?>
+                        <tr><td class="reference-cell"><?= h($row['client_reference']) ?></td><td><?= h($row['customer_phone']) ?></td><td><span class="operator-pill <?= h(operator_color($row['operator'])) ?>"><?= h(operator_label($row['operator'])) ?></span> <?= h($row['package_name']) ?></td><td><?= h(format_price($row['amount'])) ?></td><td><span class="status-pill <?= h($recentStatusClass) ?>"><?= h($recentStatusLabel) ?></span></td></tr>
+                    <?php endforeach; ?>
                     </tbody></table></div>
                 <?php endif; ?>
             </section>

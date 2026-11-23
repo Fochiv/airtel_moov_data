@@ -285,6 +285,7 @@ a { color: inherit; }
 .status-pill.paid { background: #eaf7f1; color: #16835e; }
 .status-pill.paid, .status-pill.delivered { background: #eaf7f1; color: #16835e; }
 .status-pill.pending_payment { background: #fff6e4; color: #9b6a08; }
+.status-pill.payment_unknown { background: #fff6e4; color: #9b6a08; }
 .table-actions { display: flex; align-items: center; gap: 4px; }
 .table-actions form { margin: 0; }
 .icon-button { width: 31px; height: 31px; display: grid; place-items: center; border: 1px solid #e8ebf0; border-radius: 9px; background: #fff; color: #687387; }
@@ -366,7 +367,7 @@ a { color: inherit; }
     .admin-table { min-width: 730px; }
     .admin-table th { padding: 12px; font-size: 11px; }
     .admin-table td { padding: 14px 12px; font-size: 12px; }
-    .order-search { grid-template-columns: minmax(200px, 1fr) 200px auto; align-items: center; }
+.order-search { grid-template-columns: minmax(200px, 1fr) 190px 160px auto; align-items: center; }
     .settings-list > div { grid-template-columns: 200px minmax(0, 1fr); align-items: center; }
 }
 
