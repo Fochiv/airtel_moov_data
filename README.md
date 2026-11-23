@@ -37,6 +37,7 @@ Pour utiliser SQLite en production, laisser `DB_DRIVER=sqlite` et rendre `storag
 ## Pages
 
 - `/` : catalogue public et achat sans compte.
+- `/commandes.php` : recherche du statut des commandes avec le numéro à recharger.
 - `/commande.php?ref=...` : état d’une commande.
 - `/admin/login.php` : connexion de l’administration.
 - `/admin/index.php` : indicateurs et historique des ventes confirmées.

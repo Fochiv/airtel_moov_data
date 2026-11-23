@@ -12,7 +12,6 @@ $error = '';
 
 if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
     verify_csrf();
-    $username = trim((string) ($_POST['username'] ?? ''));
     $password = (string) ($_POST['password'] ?? '');
     $remote = (string) ($_SERVER['REMOTE_ADDR'] ?? 'unknown');
     $ipHash = hash('sha256', $remote . (string) app_config('APP_RATE_LIMIT_SALT', 'gooddeal-local-rate-limit'));
@@ -24,7 +23,7 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
 
     if ($adminExists && !$locked) {
         $find = $pdo->prepare('SELECT id, username, password_hash FROM admin_users WHERE username = ? LIMIT 1');
-        $find->execute([$username]);
+        $find->execute(['admin']);
         $admin = $find->fetch();
         if (is_array($admin) && password_verify($password, (string) $admin['password_hash'])) {
             session_regenerate_id(true);
@@ -40,7 +39,7 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
     $record->execute([$ipHash, time()]);
     $error = $locked
         ? (lang() === 'fr' ? 'Trop de tentatives. Réessayez dans 15 minutes.' : 'Too many attempts. Try again in 15 minutes.')
-        : (lang() === 'fr' ? 'Identifiants incorrects.' : 'Incorrect login details.');
+        : (lang() === 'fr' ? 'Mot de passe incorrect.' : 'Incorrect password.');
 }
 
 $pageTitle = lang() === 'fr' ? 'Connexion administrateur' : 'Administrator sign in';
@@ -67,9 +66,8 @@ require dirname(__DIR__) . '/includes/header.php';
         <?php if ($adminExists): ?>
             <form method="post" action="login.php">
                 <?= csrf_field() ?>
-                <label class="form-label" for="username"><?= h(lang() === 'fr' ? 'Nom d’utilisateur' : 'Username') ?></label>
-                <input class="form-control admin-input" id="username" name="username" autocomplete="username" value="admin" required>
-                <label class="form-label mt-3" for="password"><?= h(lang() === 'fr' ? 'Mot de passe' : 'Password') ?></label>
+                <input type="text" name="username" value="admin" autocomplete="username" class="visually-hidden" tabindex="-1" aria-hidden="true">
+                <label class="form-label" for="password"><?= h(lang() === 'fr' ? 'Mot de passe' : 'Password') ?></label>
                 <input class="form-control admin-input" id="password" name="password" type="password" autocomplete="current-password" required>
                 <button class="button-primary w-100 mt-4" type="submit"><?= h(lang() === 'fr' ? 'Se connecter' : 'Sign in') ?> <?= icon('arrow') ?></button>
             </form>

@@ -103,6 +103,22 @@ function initialize_database(): void
         paid_at VARCHAR(32) NULL,
         delivered_at VARCHAR(32) NULL
     )");
+    $pdo->exec("CREATE TABLE IF NOT EXISTS order_lookup_attempts (
+        id $id,
+        ip_hash VARCHAR(64) NOT NULL,
+        attempted_at INTEGER NOT NULL
+    )");
+    if ($mysql) {
+        if (!$pdo->query("SHOW INDEX FROM orders WHERE Key_name = 'idx_orders_customer_phone'")->fetch()) {
+            $pdo->exec('CREATE INDEX idx_orders_customer_phone ON orders (customer_phone)');
+        }
+        if (!$pdo->query("SHOW INDEX FROM order_lookup_attempts WHERE Key_name = 'idx_order_lookup_ip_time'")->fetch()) {
+            $pdo->exec('CREATE INDEX idx_order_lookup_ip_time ON order_lookup_attempts (ip_hash, attempted_at)');
+        }
+    } else {
+        $pdo->exec('CREATE INDEX IF NOT EXISTS idx_orders_customer_phone ON orders (customer_phone)');
+        $pdo->exec('CREATE INDEX IF NOT EXISTS idx_order_lookup_ip_time ON order_lookup_attempts (ip_hash, attempted_at)');
+    }
     $pdo->exec("CREATE TABLE IF NOT EXISTS admin_users (
         id $id,
         username VARCHAR(80) NOT NULL UNIQUE,

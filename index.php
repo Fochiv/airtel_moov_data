@@ -47,11 +47,11 @@ require __DIR__ . '/includes/header.php';
 </header>
 
 <main>
-    <section class="hero-section">
+    <section class="hero-section" id="accueil">
         <div class="container hero-content">
             <div class="hero-copy">
                 <span class="eyebrow"><?= h(t('tagline')) ?></span>
-                <h1><?= h(t('hero_title')) ?><br><span class="brand-word airtel-word"><?= h(operator_label('airtel')) ?></span> <span class="brand-join">&amp;</span> <span class="brand-word moov-word"><?= h(operator_label('moov')) ?></span></h1>
+                <h1><?= h(t('hero_title')) ?><br><span class="brand-word airtel-word"><?= h(operator_label('airtel')) ?></span> <span class="brand-join">&amp;</span> <span class="brand-word moov-word"><?= h(operator_label('moov')) ?></span> <span class="brand-country">Gabon</span></h1>
                 <p><?= h(t('hero_text')) ?></p>
             </div>
             <div class="operator-picker" aria-labelledby="operator-label">
@@ -149,9 +149,10 @@ require __DIR__ . '/includes/header.php';
 <a class="support-fab" href="mailto:support@gooddeal.com" aria-label="<?= h(t('support')) ?>" title="<?= h(t('support')) ?>">
     <?= icon('headset') ?>
 </a>
+<?php $activeCustomerNav = 'home'; require __DIR__ . '/includes/customer-bottom-nav.php'; ?>
 
 <div class="modal fade" id="purchaseModal" tabindex="-1" aria-labelledby="purchaseTitle" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-dialog modal-dialog-centered purchase-dialog">
         <div class="modal-content purchase-modal">
             <div class="modal-header">
                 <div>
@@ -167,20 +168,30 @@ require __DIR__ . '/includes/header.php';
                 <input type="hidden" name="package_id" id="packageId">
                 <label class="form-label" for="customerPhone"><?= h(t('recipient_phone')) ?></label>
                 <input class="form-control" type="tel" id="customerPhone" name="customer_phone" inputmode="tel" autocomplete="tel" placeholder="06 12 34 56" required>
-                <label class="form-label mt-3" for="paymentMethod"><?= h(t('payment_method')) ?></label>
-                <select class="form-select" id="paymentMethod" name="payment_method" required>
-                    <option value=""><?= h(t('select_method')) ?></option>
-                    <?php foreach ($paymentOptions as $method => $label): ?>
-                        <option value="<?= h($method) ?>"><?= h((string) $label) ?></option>
-                    <?php endforeach; ?>
-                    <?php if (!$paymentOptions): ?><option value="" disabled><?= h(t('payment_unavailable')) ?></option><?php endif; ?>
-                </select>
+                <fieldset class="payment-method-fieldset">
+                    <legend class="form-label"><?= h(t('payment_method')) ?></legend>
+                    <?php if ($paymentOptions): ?>
+                        <div class="payment-method-grid">
+                            <?php foreach ($paymentOptions as $method => $label): ?>
+                                <?php $methodId = 'payment-' . preg_replace('/[^a-z0-9-]+/i', '-', (string) $method); ?>
+                                <label class="payment-choice <?= str_contains((string) $label, 'Airtel') ? 'payment-choice-airtel' : 'payment-choice-moov' ?>" for="<?= h($methodId) ?>">
+                                    <input class="payment-radio" id="<?= h($methodId) ?>" type="radio" name="payment_method" value="<?= h($method) ?>" required>
+                                    <img src="<?= str_contains((string) $label, 'Airtel') ? '/logo-airtel.jpg' : '/moov-gabon.jpg' ?>" alt="">
+                                    <span class="payment-choice-label"><?= h((string) $label) ?></span>
+                                    <span class="payment-radio-indicator" aria-hidden="true"></span>
+                                </label>
+                            <?php endforeach; ?>
+                        </div>
+                    <?php else: ?>
+                        <p class="payment-unavailable"><?= h(t('payment_unavailable')) ?></p>
+                    <?php endif; ?>
+                </fieldset>
                 <label class="form-label mt-3" for="payerPhone"><?= h(t('payment_phone')) ?></label>
                 <input class="form-control" type="tel" id="payerPhone" name="payment_phone" inputmode="tel" autocomplete="tel" placeholder="06 12 34 56" required>
                 <p class="form-feedback" id="purchaseFeedback" role="status"></p>
                 <div class="modal-actions">
                     <button type="button" class="button-secondary" data-bs-dismiss="modal"><?= h(t('cancel')) ?></button>
-                    <button class="button-primary" type="submit" id="purchaseSubmit"><?= h(t('confirm_buy')) ?> <?= icon('arrow') ?></button>
+                    <button class="button-primary" type="submit" id="purchaseSubmit" <?= !$paymentOptions ? 'disabled' : '' ?>><?= h(t('confirm_buy')) ?> <?= icon('arrow') ?></button>
                 </div>
             </form>
             <p class="payment-security-note"><?= icon('shield') ?> <?= h(lang() === 'fr' ? 'Vos informations sont utilisées uniquement pour traiter la commande.' : 'Your information is used only to process this order.') ?></p>
