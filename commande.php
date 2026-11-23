@@ -3,9 +3,23 @@ declare(strict_types=1);
 require_once __DIR__ . '/includes/bootstrap.php';
 
 $reference = trim((string) ($_GET['ref'] ?? ''));
-$statement = db()->prepare('SELECT client_reference, `operator`, package_name, amount, customer_phone, status, redirect_url, created_at FROM orders WHERE client_reference = ?');
+$statement = db()->prepare('SELECT id, client_reference, `operator`, package_name, amount, customer_phone, payment_method, payment_intent_id, status, redirect_url, created_at FROM orders WHERE client_reference = ?');
 $statement->execute([$reference]);
 $order = $statement->fetch();
+$statusRefreshFailed = false;
+if (is_array($order)
+    && in_array($order['status'], ['pending_payment', 'payment_unknown'], true)
+    && is_string($order['payment_intent_id'])
+    && $order['payment_intent_id'] !== '') {
+    try {
+        refresh_mobile_money_order_status($order);
+    } catch (Throwable) {
+        $statusRefreshFailed = true;
+    }
+    $statement = db()->prepare('SELECT id, client_reference, `operator`, package_name, amount, customer_phone, payment_method, payment_intent_id, status, redirect_url, created_at FROM orders WHERE client_reference = ?');
+    $statement->execute([$reference]);
+    $order = $statement->fetch();
+}
 if (!is_array($order)) {
     http_response_code(404);
     $pageTitle = lang() === 'fr' ? 'Commande introuvable' : 'Order not found';
@@ -33,6 +47,7 @@ require __DIR__ . '/includes/header.php';
                 'paid' => t('order_paid'),
                 'delivered' => t('order_delivered'),
                 'failed' => t('order_failed'),
+                'payment_unknown' => t('order_payment_check'),
                 default => t('order_waiting'),
             };
             $statusClass = match ($order['status']) {
@@ -42,6 +57,7 @@ require __DIR__ . '/includes/header.php';
             };
             ?>
             <section class="order-panel">
+                <?php if ($statusRefreshFailed): ?><p class="orders-message error" role="status"><?= h(t('order_refresh_failed')) ?></p><?php endif; ?>
                 <span class="order-status-icon <?= h($statusClass) ?>"><?= icon($statusClass === 'success' ? 'check' : 'clock') ?></span>
                 <span class="eyebrow"><?= h(operator_label((string) $order['operator'])) ?> · <?= h(localized_package_name((string) $order['package_name'])) ?></span>
                 <h1><?= h($statusText) ?></h1>
@@ -54,8 +70,8 @@ require __DIR__ . '/includes/header.php';
                 <?php if ($order['status'] === 'pending_payment' && is_string($order['redirect_url']) && str_starts_with($order['redirect_url'], 'https://')): ?>
                     <a class="button-primary continue-payment" href="<?= h($order['redirect_url']) ?>"><?= h(lang() === 'fr' ? 'Poursuivre le paiement' : 'Continue payment') ?> <?= icon('arrow') ?></a>
                 <?php endif; ?>
-                <?php if ($order['status'] === 'pending_payment'): ?>
-                    <button class="button-secondary order-refresh" type="button" onclick="window.location.reload()"><?= h(lang() === 'fr' ? 'Actualiser le statut' : 'Refresh status') ?></button>
+                <?php if (in_array($order['status'], ['pending_payment', 'payment_unknown'], true) && is_string($order['payment_intent_id']) && $order['payment_intent_id'] !== ''): ?>
+                    <button class="button-secondary order-refresh" type="button" onclick="window.location.reload()"><?= h(t('order_refresh')) ?></button>
                 <?php endif; ?>
                 <a class="support-inline" href="mailto:support@gooddeal.com"><?= h(t('support')) ?> · support@gooddeal.com</a>
             </section>

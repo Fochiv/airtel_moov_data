@@ -145,6 +145,17 @@ function normalize_gabon_phone(string $phone): ?string
     return '+241' . $national;
 }
 
+function bcp_local_order_status(string $providerStatus): string
+{
+    return match (strtoupper(trim($providerStatus))) {
+        'CREATED', 'PENDING', 'PROCESSING', 'REQUIRES_ACTION' => 'pending_payment',
+        'COMPLETED' => 'paid',
+        'FAILED', 'CANCELLED', 'EXPIRED' => 'failed',
+        'UNKNOWN' => 'payment_unknown',
+        default => 'payment_unknown',
+    };
+}
+
 function create_mobile_money_order(int $packageId, string $customerPhone, string $paymentPhone, string $method, string $requestToken): array
 {
     $pdo = db();
@@ -234,14 +245,15 @@ function create_mobile_money_order(int $packageId, string $customerPhone, string
             || !is_string($reference) || $reference === ''
             || $apiAmount !== (float) (int) $package['price']
             || ($data['currency'] ?? '') !== 'XAF'
-            || !in_array($apiStatus, ['CREATED', 'PENDING', 'PROCESSING', 'REQUIRES_ACTION', 'COMPLETED', 'FAILED'], true)) {
+            || ($data['environment'] ?? '') !== 'SANDBOX'
+            || $apiStatus === '') {
             throw new RuntimeException('Payment service unavailable.');
         }
         $redirect = $data['redirect_url'] ?? null;
         if (is_string($redirect) && !str_starts_with($redirect, 'https://')) {
             $redirect = null;
         }
-        $savedStatus = $apiStatus === 'COMPLETED' ? 'paid' : ($apiStatus === 'FAILED' ? 'failed' : 'pending_payment');
+        $savedStatus = bcp_local_order_status($apiStatus);
         $save = $pdo->prepare('UPDATE orders SET status = ?, paid_at = ?, payment_intent_id = ?, payment_reference = ?, provider_reference = ?, redirect_url = ? WHERE id = ?');
         $save->execute([
             $savedStatus,
@@ -260,5 +272,52 @@ function create_mobile_money_order(int $packageId, string $customerPhone, string
         $pending->execute([$orderId]);
         throw $error;
     }
+}
+
+function refresh_mobile_money_order_status(array $order): void
+{
+    $currentStatus = (string) ($order['status'] ?? '');
+    if (!in_array($currentStatus, ['pending_payment', 'payment_unknown'], true)) {
+        return;
+    }
+
+    $intentId = (string) ($order['payment_intent_id'] ?? '');
+    $clientReference = (string) ($order['client_reference'] ?? '');
+    if ($intentId === '' || $clientReference === '') {
+        return;
+    }
+
+    $response = bcp_request('GET', '/payments/' . rawurlencode($intentId), null, null, bcp_access_token());
+    $data = $response['data'] ?? null;
+    if (!is_array($data)
+        || ($data['id'] ?? '') !== $intentId
+        || ($data['environment'] ?? '') !== 'SANDBOX'
+        || ($data['country'] ?? '') !== 'GA'
+        || ($data['currency'] ?? '') !== 'XAF'
+        || ($data['operation'] ?? '') !== 'COLLECTION'
+        || ($data['payment_method'] ?? '') !== (string) ($order['payment_method'] ?? '')
+        || (float) ($data['amount'] ?? -1) !== (float) (int) ($order['amount'] ?? 0)) {
+        throw new RuntimeException('Payment status could not be verified.');
+    }
+
+    $metadata = $data['metadata'] ?? null;
+    $apiReference = is_array($metadata) ? ($metadata['client_reference'] ?? null) : null;
+    if (is_string($apiReference) && $apiReference !== '' && !hash_equals($clientReference, $apiReference)) {
+        throw new RuntimeException('Payment status could not be verified.');
+    }
+
+    $providerStatus = (string) ($data['status'] ?? '');
+    if ($providerStatus === '') {
+        throw new RuntimeException('Payment status could not be verified.');
+    }
+    $newStatus = bcp_local_order_status($providerStatus);
+    $update = db()->prepare("UPDATE orders
+        SET status = ?, paid_at = ?
+        WHERE id = ? AND status IN ('pending_payment', 'payment_unknown')");
+    $update->execute([
+        $newStatus,
+        $newStatus === 'paid' ? gmdate('Y-m-d H:i:s') : null,
+        (int) ($order['id'] ?? 0),
+    ]);
 }
 

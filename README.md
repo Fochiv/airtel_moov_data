@@ -18,7 +18,7 @@ Ajouter dans les secrets de l’environnement de développement :
 - `BIZCONNECTPAY_CLIENT_SECRET`
 - `BIZCONNECTPAY_WEBHOOK_SECRET`
 
-Créer une application configurée en `SANDBOX` avec les autorisations de lecture des services (`services.read`) et de collecte (`payments.write`), et s’assurer que le catalogue autorise les collectes `GA` / `XAF` par Airtel Money et Moov Money. Le site refuse un jeton `LIVE` pour éviter tout débit réel pendant cette phase de test. Les identifiants restent côté serveur. Les paiements ne sont confirmés que par un webhook valide, signé et vérifié.
+Créer une application configurée en `SANDBOX` avec les autorisations de lecture des services (`services.read`), de consultation des paiements (`payments.read`) et de collecte (`payments.write`), et s’assurer que le catalogue autorise les collectes `GA` / `XAF` par Airtel Money et Moov Money. Le site refuse un jeton `LIVE` pour éviter tout débit réel pendant cette phase de test. Les identifiants restent côté serveur. Les paiements ne sont confirmés que par un webhook valide, signé et vérifié.
 
 Configurer l’URL webhook publique sur `https://gooddeal-ga.top/webhook.php` et s’abonner aux événements de paiement terminé et échoué. Le site ne révèle pas le nom du prestataire de paiement dans le parcours client.
 

@@ -73,6 +73,7 @@ require dirname(__DIR__) . '/includes/header.php';
                             'paid' => lang() === 'fr' ? 'Payée' : 'Paid',
                             'delivered' => lang() === 'fr' ? 'Livrée' : 'Delivered',
                             'failed' => lang() === 'fr' ? 'Échouée' : 'Failed',
+                            'payment_unknown' => lang() === 'fr' ? 'En vérification' : 'Being checked',
                             default => lang() === 'fr' ? 'En attente' : 'Pending',
                         }) ?></span><strong><?= (int) $row['total'] ?></strong></div><div class="status-track"><i style="width: <?= $share ?>%"></i></div></div>
                     <?php endforeach; ?>
