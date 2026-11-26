@@ -15,7 +15,7 @@ $navItems = admin_nav($activeAdminPage ?? 'dashboard');
     <div class="sidebar-spacer"></div>
     <div class="sidebar-support">
         <span class="sidebar-support-mark"><?= icon('headset') ?></span>
-        <div><strong><?= h(lang() === 'fr' ? 'Besoin d’aide ?' : 'Need help?') ?></strong><a href="mailto:support@gooddeal.com">support@gooddeal.com</a></div>
+        <div><strong><?= h(lang() === 'fr' ? 'Besoin d’aide ?' : 'Need help?') ?></strong><a href="mailto:support@gooddeal-ga.top">support@gooddeal-ga.top</a></div>
     </div>
     <form class="sidebar-logout" method="post" action="logout.php">
         <?= csrf_field() ?>

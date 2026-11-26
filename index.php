@@ -142,11 +142,11 @@ require __DIR__ . '/includes/header.php';
     <div class="container footer-inner">
         <a class="footer-logo" href="/" aria-label="Gooddeal Data"><img src="/Logo_Airtel_Libertis_data.png" alt=""></a>
         <span>© <?= date('Y') ?> Gooddeal Data. <?= h(t('footer_rights')) ?></span>
-        <a href="mailto:support@gooddeal.com">support@gooddeal.com</a>
+        <a href="mailto:support@gooddeal-ga.top">support@gooddeal-ga.top</a>
     </div>
 </footer>
 
-<a class="support-fab" href="mailto:support@gooddeal.com" aria-label="<?= h(t('support')) ?>" title="<?= h(t('support')) ?>">
+<a class="support-fab" href="mailto:support@gooddeal-ga.top" aria-label="<?= h(t('support')) ?>" title="<?= h(t('support')) ?>">
     <?= icon('headset') ?>
 </a>
 <?php $activeCustomerNav = 'home'; require __DIR__ . '/includes/customer-bottom-nav.php'; ?>

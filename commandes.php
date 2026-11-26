@@ -93,6 +93,6 @@ require __DIR__ . '/includes/header.php';
     </div>
 </main>
 
-<a class="support-fab" href="mailto:support@gooddeal.com" aria-label="<?= h(t('support')) ?>" title="<?= h(t('support')) ?>"><?= icon('headset') ?></a>
+<a class="support-fab" href="mailto:support@gooddeal-ga.top" aria-label="<?= h(t('support')) ?>" title="<?= h(t('support')) ?>"><?= icon('headset') ?></a>
 <?php $activeCustomerNav = 'orders'; require __DIR__ . '/includes/customer-bottom-nav.php'; ?>
 <?php require __DIR__ . '/includes/footer.php'; ?>

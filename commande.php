@@ -73,12 +73,12 @@ require __DIR__ . '/includes/header.php';
                 <?php if (in_array($order['status'], ['pending_payment', 'payment_unknown'], true) && is_string($order['payment_intent_id']) && $order['payment_intent_id'] !== ''): ?>
                     <button class="button-secondary order-refresh" type="button" onclick="window.location.reload()"><?= h(t('order_refresh')) ?></button>
                 <?php endif; ?>
-                <a class="support-inline" href="mailto:support@gooddeal.com"><?= h(t('support')) ?> · support@gooddeal.com</a>
+                <a class="support-inline" href="mailto:support@gooddeal-ga.top"><?= h(t('support')) ?> · support@gooddeal-ga.top</a>
             </section>
         <?php endif; ?>
     </div>
 </main>
-<a class="support-fab" href="mailto:support@gooddeal.com" aria-label="<?= h(t('support')) ?>" title="<?= h(t('support')) ?>"><?= icon('headset') ?></a>
+<a class="support-fab" href="mailto:support@gooddeal-ga.top" aria-label="<?= h(t('support')) ?>" title="<?= h(t('support')) ?>"><?= icon('headset') ?></a>
 <?php $activeCustomerNav = 'orders'; require __DIR__ . '/includes/customer-bottom-nav.php'; ?>
 <?php require __DIR__ . '/includes/footer.php'; ?>
 

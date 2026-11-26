@@ -89,7 +89,7 @@ require dirname(__DIR__) . '/includes/header.php';
                         <?php else: ?><?= h(implode(', ', array_map(static fn(string $method): string => gabon_payment_method_label($method) ?? $method, array_keys($paymentMethods)))) ?><?php endif; ?>
                     </dd></div>
                     <div><dt>Webhook</dt><dd><code><?= h((string) app_config('PUBLIC_WEBHOOK_URL', 'https://gooddeal-ga.top/webhook.php')) ?></code></dd></div>
-                    <div><dt><?= h(lang() === 'fr' ? 'Assistance client' : 'Customer support') ?></dt><dd><a href="mailto:support@gooddeal.com">support@gooddeal.com</a></dd></div>
+                    <div><dt><?= h(lang() === 'fr' ? 'Assistance client' : 'Customer support') ?></dt><dd><a href="mailto:support@gooddeal-ga.top">support@gooddeal-ga.top</a></dd></div>
                 </dl>
                 <form method="post" action="parametres.php" class="settings-actions"><?= csrf_field() ?><button class="button-primary" type="submit"><?= icon('shield') ?> <?= h(lang() === 'fr' ? 'Vérifier la connexion' : 'Check connection') ?></button></form>
                 <?php if (!$isConfigured): ?><p class="admin-note"><?= h(lang() === 'fr' ? 'Ajoutez les identifiants et le secret webhook correspondant au mode sélectionné dans la configuration serveur. Ne les collez pas dans une conversation ni dans le code.' : 'Add the credentials and webhook secret for the selected mode in the server configuration. Do not paste them into chat or source code.') ?></p><?php endif; ?>
