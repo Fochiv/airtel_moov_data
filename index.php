@@ -167,7 +167,7 @@ require __DIR__ . '/includes/header.php';
                 <input type="hidden" name="checkout_token" value="<?= h($checkoutToken) ?>">
                 <input type="hidden" name="package_id" id="packageId">
                 <label class="form-label" for="customerPhone"><?= h(t('recipient_phone')) ?></label>
-                <input class="form-control" type="tel" id="customerPhone" name="customer_phone" inputmode="tel" autocomplete="tel" placeholder="06 12 34 56" required>
+                <input class="form-control" type="tel" id="customerPhone" name="customer_phone" inputmode="tel" autocomplete="tel" placeholder="07X XX XX XX" required>
                 <fieldset class="payment-method-fieldset">
                     <legend class="form-label"><?= h(t('payment_method')) ?></legend>
                     <?php if ($paymentOptions): ?>
@@ -187,7 +187,7 @@ require __DIR__ . '/includes/header.php';
                     <?php endif; ?>
                 </fieldset>
                 <label class="form-label mt-3" for="payerPhone"><?= h(t('payment_phone')) ?></label>
-                <input class="form-control" type="tel" id="payerPhone" name="payment_phone" inputmode="tel" autocomplete="tel" placeholder="06 12 34 56" required>
+                <input class="form-control" type="tel" id="payerPhone" name="payment_phone" inputmode="tel" autocomplete="tel" placeholder="07X XX XX XX" required>
                 <p class="form-feedback" id="purchaseFeedback" role="status"></p>
                 <div class="modal-actions">
                     <button type="button" class="button-secondary" data-bs-dismiss="modal"><?= h(t('cancel')) ?></button>

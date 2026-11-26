@@ -45,7 +45,7 @@ require __DIR__ . '/includes/header.php';
             <?= csrf_field() ?>
             <label class="form-label" for="ordersPhone"><?= h(t('orders_phone')) ?></label>
             <div class="orders-search-controls">
-                <input class="form-control" type="tel" id="ordersPhone" name="customer_phone" inputmode="tel" autocomplete="tel" placeholder="06 12 34 56" maxlength="20" required>
+                <input class="form-control" type="tel" id="ordersPhone" name="customer_phone" inputmode="tel" autocomplete="tel" placeholder="07X XX XX XX" maxlength="20" required>
                 <button class="button-primary" type="submit"><?= icon('search') ?> <?= h(t('orders_search')) ?></button>
             </div>
         </form>

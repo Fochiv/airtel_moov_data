@@ -169,7 +169,9 @@ function normalize_gabon_phone(string $phone): ?string
     } else {
         $national = $digits;
     }
-    if (strlen($national) === 8 && str_starts_with($national, '0')) {
+    if (strlen($national) === 9 && str_starts_with($national, '0')) {
+        $national = substr($national, 1);
+    } elseif (strlen($national) === 8 && str_starts_with($national, '0')) {
         $national = substr($national, 1);
     }
     if (strlen($national) < 7 || strlen($national) > 8) {
