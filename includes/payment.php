@@ -1,10 +1,42 @@
 <?php
 declare(strict_types=1);
 
+function bizconnectpay_environment(): string
+{
+    $environment = strtoupper(trim((string) app_config('BIZCONNECTPAY_ENVIRONMENT', 'SANDBOX')));
+    if (!in_array($environment, ['SANDBOX', 'LIVE'], true)) {
+        throw new RuntimeException('Payment environment must be SANDBOX or LIVE.');
+    }
+    return $environment;
+}
+
+function bizconnectpay_credentials(): ?array
+{
+    $prefix = bizconnectpay_environment() === 'LIVE' ? 'BIZCONNECTPAY_LIVE_' : 'BIZCONNECTPAY_';
+    $clientId = app_config($prefix . 'CLIENT_ID');
+    $clientSecret = app_config($prefix . 'CLIENT_SECRET');
+    if (!is_string($clientId) || trim($clientId) === ''
+        || !is_string($clientSecret) || trim($clientSecret) === '') {
+        return null;
+    }
+    return ['client_id' => $clientId, 'client_secret' => $clientSecret];
+}
+
+function bizconnectpay_webhook_secret(): string
+{
+    $key = bizconnectpay_environment() === 'LIVE'
+        ? 'BIZCONNECTPAY_LIVE_WEBHOOK_SECRET'
+        : 'BIZCONNECTPAY_WEBHOOK_SECRET';
+    return (string) app_config($key, '');
+}
+
 function bizconnectpay_configured(): bool
 {
-    return app_config('BIZCONNECTPAY_CLIENT_ID') !== null
-        && app_config('BIZCONNECTPAY_CLIENT_SECRET') !== null;
+    try {
+        return bizconnectpay_credentials() !== null && bizconnectpay_webhook_secret() !== '';
+    } catch (Throwable) {
+        return false;
+    }
 }
 
 function gabon_payment_method_label(string $method): ?string
@@ -62,31 +94,31 @@ function bcp_request(string $method, string $path, ?array $payload = null, ?stri
 
 function bcp_access_token(): string
 {
-    if (!bizconnectpay_configured()) {
+    $environment = bizconnectpay_environment();
+    $credentials = bizconnectpay_credentials();
+    if ($credentials === null || bizconnectpay_webhook_secret() === '') {
         throw new RuntimeException('Payment service is not configured.');
     }
+    $cacheKey = 'bcp_access_token_' . strtolower($environment);
     $pdo = db();
     $statement = $pdo->prepare('SELECT cache_value, expires_at FROM app_cache WHERE cache_key = ?');
-    $statement->execute(['bcp_access_token']);
+    $statement->execute([$cacheKey]);
     $cached = $statement->fetch();
     if (is_array($cached) && (int) $cached['expires_at'] > time() + 60) {
         return (string) $cached['cache_value'];
     }
 
-    $response = bcp_request('POST', '/auth/application/token', [
-        'client_id' => (string) app_config('BIZCONNECTPAY_CLIENT_ID'),
-        'client_secret' => (string) app_config('BIZCONNECTPAY_CLIENT_SECRET'),
-    ]);
+    $response = bcp_request('POST', '/auth/application/token', $credentials);
     $accessToken = $response['data']['access_token'] ?? null;
     $expiresIn = (int) ($response['data']['expires_in'] ?? 3600);
-    if (!is_string($accessToken) || $accessToken === '' || ($response['data']['environment'] ?? '') !== 'SANDBOX') {
+    if (!is_string($accessToken) || $accessToken === '' || ($response['data']['environment'] ?? '') !== $environment) {
         throw new RuntimeException('Payment service unavailable.');
     }
     $expiresAt = time() + max(120, $expiresIn - 120);
     $save = $pdo->prepare('DELETE FROM app_cache WHERE cache_key = ?');
-    $save->execute(['bcp_access_token']);
+    $save->execute([$cacheKey]);
     $save = $pdo->prepare('INSERT INTO app_cache (cache_key, cache_value, expires_at) VALUES (?, ?, ?)');
-    $save->execute(['bcp_access_token', $accessToken, $expiresAt]);
+    $save->execute([$cacheKey, $accessToken, $expiresAt]);
     return $accessToken;
 }
 
@@ -95,9 +127,10 @@ function bcp_services(): array
     if (!bizconnectpay_configured()) {
         return [];
     }
+    $cacheKey = 'bcp_services_ga_v3_' . strtolower(bizconnectpay_environment());
     $pdo = db();
     $statement = $pdo->prepare('SELECT cache_value, expires_at FROM app_cache WHERE cache_key = ?');
-    $statement->execute(['bcp_services_ga_v2']);
+    $statement->execute([$cacheKey]);
     $cached = $statement->fetch();
     if (is_array($cached) && (int) $cached['expires_at'] > time()) {
         $services = json_decode((string) $cached['cache_value'], true);
@@ -122,9 +155,9 @@ function bcp_services(): array
         }
     }
     $statement = $pdo->prepare('DELETE FROM app_cache WHERE cache_key = ?');
-    $statement->execute(['bcp_services_ga_v2']);
+    $statement->execute([$cacheKey]);
     $statement = $pdo->prepare('INSERT INTO app_cache (cache_key, cache_value, expires_at) VALUES (?, ?, ?)');
-    $statement->execute(['bcp_services_ga_v2', json_encode($services, JSON_THROW_ON_ERROR), time() + 300]);
+    $statement->execute([$cacheKey, json_encode($services, JSON_THROW_ON_ERROR), time() + 300]);
     return $services;
 }
 
@@ -245,7 +278,7 @@ function create_mobile_money_order(int $packageId, string $customerPhone, string
             || !is_string($reference) || $reference === ''
             || $apiAmount !== (float) (int) $package['price']
             || ($data['currency'] ?? '') !== 'XAF'
-            || ($data['environment'] ?? '') !== 'SANDBOX'
+            || ($data['environment'] ?? '') !== bizconnectpay_environment()
             || $apiStatus === '') {
             throw new RuntimeException('Payment service unavailable.');
         }
@@ -291,7 +324,7 @@ function refresh_mobile_money_order_status(array $order): void
     $data = $response['data'] ?? null;
     if (!is_array($data)
         || ($data['id'] ?? '') !== $intentId
-        || ($data['environment'] ?? '') !== 'SANDBOX'
+        || ($data['environment'] ?? '') !== bizconnectpay_environment()
         || ($data['country'] ?? '') !== 'GA'
         || ($data['currency'] ?? '') !== 'XAF'
         || ($data['operation'] ?? '') !== 'COLLECTION'

@@ -11,11 +11,19 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') !== 'POST') {
     exit;
 }
 
-$secret = (string) app_config('BIZCONNECTPAY_WEBHOOK_SECRET', '');
+try {
+    $environment = bizconnectpay_environment();
+    $secret = bizconnectpay_webhook_secret();
+} catch (Throwable) {
+    http_response_code(503);
+    echo json_encode(['received' => false, 'error' => 'payment_configuration_unavailable']);
+    exit;
+}
 $raw = file_get_contents('php://input');
 $timestamp = (string) ($_SERVER['HTTP_X_BIZCONNECTPAY_TIMESTAMP'] ?? '');
 $receivedSignature = (string) ($_SERVER['HTTP_X_BIZCONNECTPAY_SIGNATURE'] ?? '');
 $headerEventId = (string) ($_SERVER['HTTP_X_BIZCONNECTPAY_EVENT_ID'] ?? '');
+$headerEventType = (string) ($_SERVER['HTTP_X_BIZCONNECTPAY_EVENT'] ?? '');
 if ($secret === '' || !is_string($raw) || $raw === '' || !ctype_digit($timestamp)
     || abs(time() - (int) $timestamp) > 300 || !preg_match('/^v1=[a-f0-9]{64}$/i', $receivedSignature)) {
     http_response_code(401);
@@ -37,6 +45,7 @@ $data = is_array($event) ? ($event['data'] ?? null) : null;
 $intentId = is_array($data) ? (string) ($data['payment_intent_id'] ?? '') : '';
 $status = is_array($data) ? (string) ($data['status'] ?? '') : '';
 if ($eventId === '' || ($headerEventId !== '' && !hash_equals($eventId, $headerEventId))
+    || ($headerEventType !== '' && !hash_equals($type, $headerEventType))
     || !is_array($data) || $intentId === '') {
     http_response_code(400);
     echo json_encode(['received' => false, 'error' => 'invalid_event']);
@@ -49,6 +58,12 @@ if (!in_array($type, [
 ], true)) {
     http_response_code(200);
     echo json_encode(['received' => true, 'ignored' => true]);
+    exit;
+}
+
+if (strtoupper((string) ($data['environment'] ?? '')) !== $environment) {
+    http_response_code(422);
+    echo json_encode(['received' => false, 'error' => 'environment_mismatch']);
     exit;
 }
 

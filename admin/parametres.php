@@ -30,6 +30,9 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
         exit;
     } else {
         try {
+            if (!bizconnectpay_configured()) {
+                throw new RuntimeException('Payment configuration is incomplete.');
+            }
             $services = bcp_services();
             $apiMessage = lang() === 'fr'
                 ? (count($services) ? 'Connexion prête. ' . count($services) . ' moyen(s) de paiement disponible(s) au Gabon.' : 'Connexion établie, mais aucun moyen de paiement Mobile Money n’est activé pour le Gabon.')
@@ -43,7 +46,16 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
         }
     }
 }
+$paymentEnvironment = 'SANDBOX';
+try {
+    $paymentEnvironment = bizconnectpay_environment();
+} catch (Throwable) {
+    $paymentEnvironment = 'CONFIGURATION';
+}
 $isConfigured = bizconnectpay_configured();
+$environmentClass = $paymentEnvironment === 'SANDBOX'
+    ? 'pending'
+    : ($paymentEnvironment === 'LIVE' && $isConfigured ? 'delivered' : 'failed');
 try {
     $paymentMethods = $isConfigured ? bcp_services() : [];
 } catch (Throwable) {
@@ -65,12 +77,12 @@ require dirname(__DIR__) . '/includes/header.php';
             <?php if ($apiMessage !== ''): ?><div class="admin-alert <?= h($apiMessageClass) ?>" role="status"><?= h($apiMessage) ?></div><?php endif; ?>
             <?php if ($flashMessage): ?><div class="admin-alert <?= h($flashMessage['type']) ?>" role="status"><?= h($flashMessage['message']) ?></div><?php endif; ?>
             <section class="admin-panel settings-panel">
-                <div class="panel-heading"><div><span class="panel-kicker"><?= h(lang() === 'fr' ? 'Configuration sandbox' : 'Sandbox configuration') ?></span><h2><?= h(lang() === 'fr' ? 'Paiement en ligne' : 'Online payment') ?></h2></div><span class="status-pill <?= $isConfigured ? 'delivered' : 'failed' ?>"><?= h($isConfigured ? (lang() === 'fr' ? 'Configuré' : 'Configured') : (lang() === 'fr' ? 'À configurer' : 'Setup required')) ?></span></div>
+                <div class="panel-heading"><div><span class="panel-kicker"><?= h(lang() === 'fr' ? 'Configuration du paiement' : 'Payment configuration') ?></span><h2><?= h(lang() === 'fr' ? 'Paiement en ligne' : 'Online payment') ?></h2></div><span class="status-pill <?= $isConfigured ? 'delivered' : 'failed' ?>"><?= h($isConfigured ? (lang() === 'fr' ? 'Configuré' : 'Configured') : (lang() === 'fr' ? 'À configurer' : 'Setup required')) ?></span></div>
                 <p><?= h(lang() === 'fr'
                     ? 'Les clés de paiement restent sur le serveur. Elles ne sont jamais envoyées au navigateur ni affichées dans l’interface client.'
                     : 'Payment credentials stay on the server. They are never sent to the browser or shown in the customer interface.') ?></p>
                 <dl class="settings-list">
-                    <div><dt><?= h(lang() === 'fr' ? 'Mode' : 'Mode') ?></dt><dd><span class="status-pill pending">SANDBOX</span></dd></div>
+                    <div><dt><?= h(lang() === 'fr' ? 'Mode' : 'Mode') ?></dt><dd><span class="status-pill <?= h($environmentClass) ?>"><?= h($paymentEnvironment) ?></span></dd></div>
                     <div><dt><?= h(lang() === 'fr' ? 'Pays / devise' : 'Country / currency') ?></dt><dd>Gabon · XAF</dd></div>
                     <div><dt><?= h(lang() === 'fr' ? 'Moyens disponibles' : 'Available methods') ?></dt><dd>
                         <?php if (!$paymentMethods): ?><?= h(lang() === 'fr' ? 'Aucun moyen confirmé' : 'No confirmed methods') ?>
@@ -80,7 +92,7 @@ require dirname(__DIR__) . '/includes/header.php';
                     <div><dt><?= h(lang() === 'fr' ? 'Assistance client' : 'Customer support') ?></dt><dd><a href="mailto:support@gooddeal.com">support@gooddeal.com</a></dd></div>
                 </dl>
                 <form method="post" action="parametres.php" class="settings-actions"><?= csrf_field() ?><button class="button-primary" type="submit"><?= icon('shield') ?> <?= h(lang() === 'fr' ? 'Vérifier la connexion' : 'Check connection') ?></button></form>
-                <?php if (!$isConfigured): ?><p class="admin-note"><?= h(lang() === 'fr' ? 'Ajoutez les identifiants sandbox et le secret de webhook dans les secrets du projet. Ne les collez pas dans une conversation ni dans le code.' : 'Add the sandbox credentials and webhook secret to the project secrets. Do not paste them into chat or source code.') ?></p><?php endif; ?>
+                <?php if (!$isConfigured): ?><p class="admin-note"><?= h(lang() === 'fr' ? 'Ajoutez les identifiants et le secret webhook correspondant au mode sélectionné dans la configuration serveur. Ne les collez pas dans une conversation ni dans le code.' : 'Add the credentials and webhook secret for the selected mode in the server configuration. Do not paste them into chat or source code.') ?></p><?php endif; ?>
             </section>
             <section class="admin-panel settings-panel">
                 <div class="panel-heading"><div><span class="panel-kicker"><?= h(lang() === 'fr' ? 'Sécurité' : 'Security') ?></span><h2><?= h(lang() === 'fr' ? 'Compte administrateur' : 'Administrator account') ?></h2></div></div>
